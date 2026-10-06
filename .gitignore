@@ -1,0 +1,8 @@
+# Reports the module writes when you run it
+output/
+*.csv
+*.html
+
+# Pester test results
+testResults.xml
+coverage.xml
