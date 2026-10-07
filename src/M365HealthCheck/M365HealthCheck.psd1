@@ -12,7 +12,7 @@
 RootModule = 'M365HealthCheck.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.1.0'
+ModuleVersion = '0.2.0'
 
 # Supported PSEditions
 CompatiblePSEditions = 'Desktop', 'Core'
@@ -30,7 +30,7 @@ Author = 'Mukhtaar Sugule'
 Copyright = '(c) 2026 Mukhtaar Sugule. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'Checks Microsoft 365 / Exchange Online data for common problems, such as a Recoverable Items folder close to its quota.'
+Description = 'Checks Microsoft 365 / Exchange Online data for common problems, such as a Recoverable Items folder close to its quota or a filling mailbox with no archive.'
 
 # Minimum version of the Windows PowerShell engine required by this module
 PowerShellVersion = '5.1'
@@ -69,7 +69,7 @@ PowerShellVersion = '5.1'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = 'Test-RecoverableItemsQuota'
+FunctionsToExport = 'Test-MailboxArchive', 'Test-RecoverableItemsQuota'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = @()
