@@ -1,7 +1,7 @@
 # Run with:  Invoke-Pester .\tests -Output Detailed   (needs Pester 5)
 
 BeforeAll {
-    Import-Module "$PSScriptRoot\..\src\M365HealthCheck\M365HealthCheck.psm1" -Force
+    Import-Module "$PSScriptRoot\..\src\M365HealthCheck\M365HealthCheck.psd1" -Force
 
     # Builds one fake mailbox. Sizes are in GB to keep the tests readable.
     function New-FakeMailbox ($Name, $UsedGB, $QuotaGB) {
