@@ -1,5 +1,5 @@
 [
-  { "DisplayName": "Alex Test",   "RecoverableItemsSizeBytes": 10737418240,  "RecoverableItemsQuotaBytes": 32212254720 },
-  { "DisplayName": "Sam Example", "RecoverableItemsSizeBytes": 27917287424,  "RecoverableItemsQuotaBytes": 32212254720 },
-  { "DisplayName": "Jo Sample",   "RecoverableItemsSizeBytes": 31675383808,  "RecoverableItemsQuotaBytes": 32212254720 }
+  { "DisplayName": "Alex Test",   "RecoverableItemsSizeBytes": 10737418240,  "RecoverableItemsQuotaBytes": 32212254720, "ArchiveEnabled": true,  "MailboxSizeBytes": 48318382080, "MailboxQuotaBytes": 53687091200 },
+  { "DisplayName": "Sam Example", "RecoverableItemsSizeBytes": 27917287424,  "RecoverableItemsQuotaBytes": 32212254720, "ArchiveEnabled": false, "MailboxSizeBytes": 45097156608, "MailboxQuotaBytes": 53687091200 },
+  { "DisplayName": "Jo Sample",   "RecoverableItemsSizeBytes": 31675383808,  "RecoverableItemsQuotaBytes": 32212254720, "ArchiveEnabled": false, "MailboxSizeBytes": 10737418240, "MailboxQuotaBytes": 53687091200 }
 ]
