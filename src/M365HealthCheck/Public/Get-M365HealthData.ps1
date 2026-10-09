@@ -36,11 +36,23 @@ function Get-M365HealthData {
     foreach ($mb in $mailboxes) {
         Write-Verbose "Reading $($mb.UserPrincipalName)"
 
-        $stats = Get-EXOMailboxStatistics -Identity $mb.ExchangeGuid
+        # ExternalDirectoryObjectId is always returned by Get-EXOMailbox. ExchangeGuid isn't
+        # unless asked for, which left every lookup blank on a real tenant (found 9 Oct 2026).
+        $id = $mb.ExternalDirectoryObjectId
 
-        # The Recoverable Items scope returns several folders; the root one holds the total.
-        $riRoot = Get-EXOMailboxFolderStatistics -Identity $mb.ExchangeGuid -FolderScope RecoverableItems |
-            Where-Object FolderType -eq 'RecoverableItemsRoot'
+        # If one mailbox fails, warn and carry on; its sizes stay blank and show as Unknown.
+        try {
+            $stats = Get-EXOMailboxStatistics -Identity $id -ErrorAction Stop
+
+            # The Recoverable Items scope returns several folders; the root one holds the total.
+            $riRoot = Get-EXOMailboxFolderStatistics -Identity $id -FolderScope RecoverableItems -ErrorAction Stop |
+                Where-Object FolderType -eq 'RecoverableItemsRoot'
+        }
+        catch {
+            Write-Warning "Could not read sizes for $($mb.UserPrincipalName): $($_.Exception.Message)"
+            $stats  = $null
+            $riRoot = $null
+        }
 
         [pscustomobject]@{
             DisplayName                = $mb.DisplayName

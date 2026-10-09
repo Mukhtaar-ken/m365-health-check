@@ -6,10 +6,11 @@ BeforeAll {
 
     # Pester can only mock a command that exists. The ExchangeOnlineManagement module
     # isn't installed on the CI machine, so create empty stand-ins for its commands.
-    function global:Get-ConnectionInformation {}
-    function global:Get-EXOMailbox {}
-    function global:Get-EXOMailboxStatistics {}
-    function global:Get-EXOMailboxFolderStatistics {}
+    # They declare the real parameter names so mocks can filter on them (e.g. -Identity).
+    function global:Get-ConnectionInformation { [CmdletBinding()] param() }
+    function global:Get-EXOMailbox { [CmdletBinding()] param($RecipientTypeDetails, $ResultSize, $Properties) }
+    function global:Get-EXOMailboxStatistics { [CmdletBinding()] param($Identity) }
+    function global:Get-EXOMailboxFolderStatistics { [CmdletBinding()] param($Identity, $FolderScope) }
 }
 
 AfterAll {
@@ -31,6 +32,12 @@ Describe 'ConvertTo-ByteCount' {
     It 'returns nothing for a blank value' {
         InModuleScope M365HealthCheck { ConvertTo-ByteCount $null } | Should -BeNullOrEmpty
     }
+
+    It 'unwraps a size that arrives as { IsUnlimited; Value }' {
+        InModuleScope M365HealthCheck {
+            ConvertTo-ByteCount ([pscustomobject]@{ IsUnlimited = $false; Value = '5.125 GB (5,503,440,800 bytes)' })
+        } | Should -Be 5503440800
+    }
 }
 
 Describe 'Get-M365HealthData' {
@@ -46,26 +53,32 @@ Describe 'Get-M365HealthData' {
         BeforeAll {
             Mock Get-ConnectionInformation -ModuleName M365HealthCheck { [pscustomobject]@{ State = 'Connected' } }
 
+            # Shaped like a real tenant's output (checked 9 Oct 2026): no ExchangeGuid unless asked for,
+            # but ExternalDirectoryObjectId is always there.
             Mock Get-EXOMailbox -ModuleName M365HealthCheck {
                 [pscustomobject]@{
-                    DisplayName           = 'Sam Example'
-                    UserPrincipalName     = 'sam@contoso.example'
-                    ExchangeGuid          = [guid]'11111111-1111-1111-1111-111111111111'
-                    ArchiveStatus         = 'None'
-                    ProhibitSendQuota     = '49.5 GB (53,150,220,288 bytes)'
-                    RecoverableItemsQuota = '30 GB (32,212,254,720 bytes)'
+                    DisplayName               = 'Sam Example'
+                    UserPrincipalName         = 'sam@contoso.example'
+                    ExternalDirectoryObjectId = 'sam-object-id'
+                    ArchiveStatus             = 'None'
+                    ProhibitSendQuota         = '49.5 GB (53,150,220,288 bytes)'
+                    RecoverableItemsQuota     = '30 GB (32,212,254,720 bytes)'
                 }
             }
 
-            Mock Get-EXOMailboxStatistics -ModuleName M365HealthCheck {
-                [pscustomobject]@{ TotalItemSize = '45 GB (48,318,382,080 bytes)' }
+            # Only answers when asked for the right mailbox, so a blank or wrong ID gets nothing back.
+            # TotalItemSize comes wrapped as { IsUnlimited; Value }, like the real command.
+            Mock Get-EXOMailboxStatistics -ModuleName M365HealthCheck -ParameterFilter { $Identity -eq 'sam-object-id' } {
+                [pscustomobject]@{
+                    TotalItemSize = [pscustomobject]@{ IsUnlimited = $false; Value = '45 GB (48,318,382,080 bytes)' }
+                }
             }
 
             # Two folders come back, like the real command; only the root should be used.
             # The subfolder is first on purpose, so "just take the first one" would fail the test.
-            Mock Get-EXOMailboxFolderStatistics -ModuleName M365HealthCheck {
-                [pscustomobject]@{ FolderType = 'Deletions';            FolderAndSubfolderSize = '1 GB (1,073,741,824 bytes)' }
-                [pscustomobject]@{ FolderType = 'RecoverableItemsRoot'; FolderAndSubfolderSize = '26 GB (27,917,287,424 bytes)' }
+            Mock Get-EXOMailboxFolderStatistics -ModuleName M365HealthCheck -ParameterFilter { $Identity -eq 'sam-object-id' } {
+                [pscustomobject]@{ FolderType = 'RecoverableItemsDeletions'; FolderAndSubfolderSize = '1 GB (1,073,741,824 bytes)' }
+                [pscustomobject]@{ FolderType = 'RecoverableItemsRoot';      FolderAndSubfolderSize = '26 GB (27,917,287,424 bytes)' }
             }
 
             $result = Get-M365HealthData
@@ -88,6 +101,31 @@ Describe 'Get-M365HealthData' {
         It 'produces objects both checks can read' {
             ($result | Test-MailboxArchive).Status        | Should -Be 'Warning'
             ($result | Test-RecoverableItemsQuota).Status | Should -Be 'Warning'
+        }
+    }
+
+    Context 'when one mailbox cannot be read' {
+        BeforeAll {
+            Mock Get-ConnectionInformation -ModuleName M365HealthCheck { [pscustomobject]@{ State = 'Connected' } }
+            Mock Get-EXOMailbox -ModuleName M365HealthCheck {
+                [pscustomobject]@{ DisplayName = 'Broken'; UserPrincipalName = 'broken@contoso.example'; ExternalDirectoryObjectId = 'broken-id'
+                                   ArchiveStatus = 'None'; ProhibitSendQuota = '49.5 GB (53,150,220,288 bytes)'; RecoverableItemsQuota = '30 GB (32,212,254,720 bytes)' }
+            }
+            Mock Get-EXOMailboxStatistics -ModuleName M365HealthCheck { throw 'mailbox not found' }
+            Mock Get-EXOMailboxFolderStatistics -ModuleName M365HealthCheck { throw 'mailbox not found' }
+
+            $result = Get-M365HealthData -WarningVariable warnings -WarningAction SilentlyContinue
+        }
+
+        It 'warns instead of stopping' {
+            $warnings | Should -HaveCount 1
+            "$warnings" | Should -Match 'broken@contoso.example'
+        }
+
+        It 'leaves the sizes blank, so the checks say Unknown rather than OK' {
+            $result.MailboxSizeBytes | Should -BeNullOrEmpty
+            ($result | Test-MailboxArchive).Status        | Should -Be 'Unknown'
+            ($result | Test-RecoverableItemsQuota).Status | Should -Be 'Unknown'
         }
     }
 }

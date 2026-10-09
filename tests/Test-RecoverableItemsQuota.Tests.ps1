@@ -41,6 +41,12 @@ Describe 'Test-RecoverableItemsQuota' {
         $result.Status | Should -Be 'Unknown'
     }
 
+    It 'returns Unknown, not OK, when the Recoverable Items size is missing' {
+        $mb = New-FakeMailbox 'No Size' 0 30
+        $mb.RecoverableItemsSizeBytes = $null
+        ($mb | Test-RecoverableItemsQuota).Status | Should -Be 'Unknown'
+    }
+
     It 'refuses a warning threshold that is not below the critical one' {
         { New-FakeMailbox 'Alex Test' 10 30 | Test-RecoverableItemsQuota -WarningPercent 90 -CriticalPercent 50 } |
             Should -Throw '*must be lower than*'
