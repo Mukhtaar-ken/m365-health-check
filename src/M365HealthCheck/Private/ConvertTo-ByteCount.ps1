@@ -18,6 +18,11 @@ function ConvertTo-ByteCount {
     )
 
     process {
+        # Some sizes (e.g. TotalItemSize) arrive wrapped as { IsUnlimited; Value }. Unwrap them first.
+        if ($null -ne $Value -and $Value.PSObject.Properties['IsUnlimited']) {
+            $Value = $Value.Value
+        }
+
         # "$Value" turns either a string or an Exchange size object into the same text.
         if ("$Value" -match '\(([\d,]+) bytes\)') {
             [long]($Matches[1] -replace ',', '')

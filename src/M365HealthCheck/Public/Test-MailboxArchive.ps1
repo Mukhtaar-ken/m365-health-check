@@ -52,13 +52,14 @@ function Test-MailboxArchive {
             }
 
             # No quota means we can't work out a percentage (and can't divide by zero).
-            if (-not $mb.MailboxQuotaBytes) {
+            # No size means the data is missing, which must never be reported as 0% and OK.
+            if (-not $mb.MailboxQuotaBytes -or $null -eq $mb.MailboxSizeBytes) {
                 [pscustomobject]@{
                     Check       = 'MailboxArchive'
                     Target      = $mb.DisplayName
                     Status      = 'Unknown'
                     PercentUsed = $null
-                    Detail      = 'No archive, and no quota value, so usage could not be checked.'
+                    Detail      = 'No archive, and the mailbox size or quota is missing, so usage could not be checked.'
                 }
                 continue
             }

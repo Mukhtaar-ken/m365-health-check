@@ -41,6 +41,12 @@ Describe 'Test-MailboxArchive' {
         $result.Status | Should -Be 'Unknown'
     }
 
+    It 'returns Unknown, not OK, when the mailbox size is missing' {
+        $mb = New-FakeMailbox 'No Size' $false 0 50
+        $mb.MailboxSizeBytes = $null
+        ($mb | Test-MailboxArchive).Status | Should -Be 'Unknown'
+    }
+
     It 'handles several mailboxes from the pipeline' {
         $mailboxes = Get-Content "$PSScriptRoot\fixtures\mailboxes.json" -Raw | ConvertFrom-Json
         $results   = $mailboxes | Test-MailboxArchive

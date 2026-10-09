@@ -40,13 +40,14 @@ function Test-RecoverableItemsQuota {
         foreach ($mb in $Mailbox) {
 
             # No quota means we can't work out a percentage (and can't divide by zero).
-            if (-not $mb.RecoverableItemsQuotaBytes) {
+            # No size means the data is missing, which must never be reported as 0% and OK.
+            if (-not $mb.RecoverableItemsQuotaBytes -or $null -eq $mb.RecoverableItemsSizeBytes) {
                 [pscustomobject]@{
                     Check       = 'RecoverableItemsQuota'
                     Target      = $mb.DisplayName
                     Status      = 'Unknown'
                     PercentUsed = $null
-                    Detail      = 'No quota value, so usage could not be checked.'
+                    Detail      = 'The Recoverable Items size or quota is missing, so usage could not be checked.'
                 }
                 continue
             }
